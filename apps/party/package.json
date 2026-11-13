@@ -1,0 +1,17 @@
+{
+  "name": "@hoodwink/party",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "partykit dev",
+    "deploy": "partykit deploy",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@hoodwink/game-core": "*"
+  },
+  "devDependencies": {
+    "partykit": "^0.0.115"
+  }
+}

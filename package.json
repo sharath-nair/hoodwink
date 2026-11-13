@@ -1,0 +1,19 @@
+{
+  "name": "hoodwink",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Real-time multiplayer bluffing party game. Fool your friends with the most plausible fake answer.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n party,web -c magenta,cyan \"npm run dev -w @hoodwink/party\" \"npm run dev -w @hoodwink/web\"",
+    "test": "npm run test -w @hoodwink/game-core",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0",
+    "typescript": "^5.6.0"
+  }
+}
