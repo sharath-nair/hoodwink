@@ -6,3 +6,5 @@ dist
 *.tsbuildinfo
 .DS_Store
 next-env.d.ts
+test-results
+playwright-report

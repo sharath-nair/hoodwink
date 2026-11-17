@@ -39,15 +39,27 @@ Transitions happen on the server only: early, when every connected player has ac
 npm install
 npm run dev        # PartyKit on :1999, Next.js on :3000
 npm test           # game-core unit tests
+npm run test:e2e   # Playwright: 4 real browsers vs. the real server (uses installed Chrome)
 npm run typecheck
 ```
 
 Open http://localhost:3000 in three tabs (or phones on your LAN, set `NEXT_PUBLIC_PARTYKIT_HOST`), create a room, join with the code and play.
 
+## E2E tests
+
+`npm run test:e2e` boots PartyKit (with `E2E=1` for short phase timers) and a production Next build on dedicated
+ports (4999/4000), then drives 3-4 isolated browser contexts through real games. No Chrome? Run
+`npx playwright install chromium` and `E2E_CHANNEL= npm run test:e2e`.
+
+- **game**: full 2-round game back to lobby, host-only controls, late joiner and duplicate-name refusal, merged identical lies
+- **reconnect**: a player drops mid-round, the game doesn't wait, and they reclaim their seat on return
+- **secrecy**: inspects every WebSocket frame: no real answer, authorship or other players' lies before the right phase
+- **clock**: clients with +7s and -9s clocks show the same countdown (verified to fail if offset correction is removed)
+
 ## Roadmap
 
 - [x] Sound effects: synthesized WebAudio (`apps/web/src/lib/sfx.ts`), unlocked on first tap, muted in hidden tabs, persisted mute toggle
 - [ ] Jackbox-style `/host` big-screen view, with phones as controllers
-- [ ] Playwright multi-context E2E (4 players, full game, simulated latency)
+- [x] Playwright multi-context E2E (`e2e/`): full game, reconnect, secrecy on the wire, clock skew
 - [ ] Larger / themed question packs, optional LLM-generated prompts with curated fallback
 - [ ] Deploy: `partykit deploy` + Vercel

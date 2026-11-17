@@ -5,11 +5,13 @@
   "description": "Real-time multiplayer bluffing party game. Fool your friends with the most plausible fake answer.",
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "e2e"
   ],
   "scripts": {
     "dev": "concurrently -n party,web -c magenta,cyan \"npm run dev -w @hoodwink/party\" \"npm run dev -w @hoodwink/web\"",
     "test": "npm run test -w @hoodwink/game-core",
+    "test:e2e": "E2E_CHANNEL=${E2E_CHANNEL:-chrome} npm run test -w @hoodwink/e2e",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {

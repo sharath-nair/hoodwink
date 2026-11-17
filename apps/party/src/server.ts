@@ -34,7 +34,10 @@ export default class HoodwinkServer implements Party.Server {
   private seq = 0;
 
   constructor(readonly party: Party.Room) {
-    this.game = createRoom(party.id.toUpperCase());
+    // `partykit dev --var E2E=1` shortens the game so browser tests finish quickly.
+    // Submit stays long enough to observe the countdown; early-advance skips it in normal flow.
+    const e2e = party.env.E2E === '1';
+    this.game = createRoom(party.id.toUpperCase(), e2e ? { totalRounds: 2, submitMs: 20_000, voteMs: 10_000, revealMs: 6_000, scoreboardMs: 2_000 } : {});
   }
 
   async onStart() {

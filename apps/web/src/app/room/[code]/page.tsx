@@ -112,6 +112,7 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
       <AnimatePresence mode="wait">
         <motion.div
           key={view.phase}
+          data-phase={view.phase}
           className="flex flex-1 flex-col"
           initial={{ opacity: 0, x: 40 }}
           animate={{ opacity: 1, x: 0 }}
