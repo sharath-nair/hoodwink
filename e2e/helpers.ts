@@ -47,6 +47,34 @@ export async function joinRoom(player: Player, code: string): Promise<void> {
   await expectPhase(player, 'LOBBY');
 }
 
+/** Opens the big-screen display for an existing room. Connects as a spectator, not a player. */
+export async function openHostScreen(browser: Browser, code: string): Promise<Player> {
+  const tv = await newPlayer(browser, 'TV');
+  await tv.page.goto(`/host/${code}`);
+  await expectPhase(tv, 'LOBBY');
+  return tv;
+}
+
+/** Must match PARTY_PORT in playwright.config.ts. */
+export const PARTY_WS = 'ws://127.0.0.1:4999/parties/main';
+
+/** Minimal raw socket for protocol-level tests (no browser, no UI). Collects every server message. */
+export async function rawSocket(code: string) {
+  const ws = new WebSocket(`${PARTY_WS}/${code}`);
+  const messages: { type: string; code?: string }[] = [];
+  ws.onmessage = (ev) => messages.push(JSON.parse(String(ev.data)));
+  await new Promise<void>((resolve, reject) => {
+    ws.onopen = () => resolve();
+    ws.onerror = () => reject(new Error('socket error'));
+  });
+  return {
+    messages,
+    send: (m: object) => ws.send(JSON.stringify(m)),
+    close: () => ws.close(),
+    errors: () => messages.filter((m) => m.type === 'error').map((m) => m.code),
+  };
+}
+
 export const phaseLocator = (p: Player, phase: Phase) => p.page.locator(`[data-phase="${phase}"]`);
 
 export async function expectPhase(p: Player, phase: Phase, timeout?: number) {

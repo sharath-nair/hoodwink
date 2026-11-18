@@ -10,7 +10,18 @@ import { sfx } from '@/lib/sfx';
  * so throttled/backgrounded tabs snap to the right value the moment they wake up.
  * The bar is mutated via ref, so there are no React re-renders per frame.
  */
-export function TimerBar({ endsAt, durationMs, tick = false }: { endsAt: number; durationMs: number; tick?: boolean }) {
+export function TimerBar({
+  endsAt,
+  durationMs,
+  tick = false,
+  large = false,
+}: {
+  endsAt: number;
+  durationMs: number;
+  tick?: boolean;
+  /** Big-screen sizing for the host display. */
+  large?: boolean;
+}) {
   const fill = useRef<HTMLDivElement>(null);
   const [seconds, setSeconds] = useState(() => Math.ceil(clock.timeLeft(endsAt) / 1000));
 
@@ -41,10 +52,10 @@ export function TimerBar({ endsAt, durationMs, tick = false }: { endsAt: number;
 
   return (
     <div className="flex items-center gap-3" role="timer" aria-live="off" aria-label={`${seconds} seconds left`}>
-      <div className="h-3 flex-1 overflow-hidden rounded-full bg-white/15">
+      <div className={`flex-1 overflow-hidden rounded-full bg-white/15 ${large ? 'h-6' : 'h-3'}`}>
         <div ref={fill} className="h-full origin-left rounded-full" style={{ transform: 'scaleX(1)' }} />
       </div>
-      <span className="w-8 text-right text-lg font-bold tabular-nums">{seconds}</span>
+      <span className={`text-right font-bold tabular-nums ${large ? 'w-20 text-5xl' : 'w-8 text-lg'}`}>{seconds}</span>
     </div>
   );
 }

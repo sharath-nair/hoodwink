@@ -204,7 +204,7 @@ export function Voting({ v }: { v: RoomView }) {
 
 // ------------------------------------------------------------------ REVEAL
 
-function FlipCard({ delay, real, front, back }: { delay: number; real: boolean; front: React.ReactNode; back: React.ReactNode }) {
+export function FlipCard({ delay, real, front, back }: { delay: number; real: boolean; front: React.ReactNode; back: React.ReactNode }) {
   const [flipped, setFlipped] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => {
@@ -214,16 +214,18 @@ function FlipCard({ delay, real, front, back }: { delay: number; real: boolean; 
     }, delay * 1000);
     return () => clearTimeout(t);
   }, [delay, real]);
-  const face = { backfaceVisibility: 'hidden' as const };
+  // Both faces occupy the SAME grid cell, so the card is as tall as the taller face.
+  // (Absolutely positioning the back clipped it to the front's height and let text overflow.)
+  const face = { backfaceVisibility: 'hidden' as const, gridArea: '1 / 1' };
   return (
     <div style={{ perspective: 1000 }}>
       <motion.div
         animate={{ rotateY: flipped ? 180 : 0 }}
         transition={{ duration: 0.6, type: 'spring', stiffness: 120, damping: 16 }}
-        style={{ transformStyle: 'preserve-3d', position: 'relative' }}
+        style={{ transformStyle: 'preserve-3d', display: 'grid' }}
       >
         <div style={face}>{front}</div>
-        <div style={{ ...face, transform: 'rotateY(180deg)', position: 'absolute', inset: 0 }}>{back}</div>
+        <div style={{ ...face, transform: 'rotateY(180deg)' }}>{back}</div>
       </motion.div>
     </div>
   );
@@ -280,25 +282,25 @@ export function Reveal({ v }: { v: RoomView }) {
 
 // ------------------------------------------------------------------ SCOREBOARD / GAME OVER
 
-function Ranking({ v }: { v: RoomView }) {
+export function Ranking({ v, big = false }: { v: Pick<RoomView, 'players' | 'roundDeltas'> & { you?: string }; big?: boolean }) {
   const ranked = [...v.players].sort((a, b) => b.score - a.score);
   return (
-    <ul className="space-y-2">
+    <ul className={big ? 'space-y-4' : 'space-y-2'}>
       {ranked.map((p, i) => (
         <motion.li
           key={p.id}
           layout
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          className={`card flex items-center gap-3 px-4 py-3 ${p.id === v.you ? 'ring-2 ring-pink-400' : ''}`}
+          className={`card flex items-center gap-3 ${big ? 'gap-6 px-8 py-5 text-4xl' : 'px-4 py-3'} ${p.id === v.you ? 'ring-2 ring-pink-400' : ''}`}
         >
-          <span className="w-6 text-lg font-black text-white/60">{i + 1}</span>
+          <span className={`font-black text-white/60 ${big ? 'w-12' : 'w-6 text-lg'}`}>{i + 1}</span>
           <span className="flex-1 font-bold">{p.name}</span>
           {v.roundDeltas[p.id] ? (
-            <motion.span initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-sm font-black text-emerald-300">
+            <motion.span initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className={`font-black text-emerald-300 ${big ? 'text-3xl' : 'text-sm'}`}>
               +{v.roundDeltas[p.id]}
             </motion.span>
           ) : null}
-          <span className="w-16 text-right text-xl font-black tabular-nums">{p.score}</span>
+          <span className={`text-right font-black tabular-nums ${big ? 'w-40 text-5xl' : 'w-16 text-xl'}`}>{p.score}</span>
         </motion.li>
       ))}
     </ul>

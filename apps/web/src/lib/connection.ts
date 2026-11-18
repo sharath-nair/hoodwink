@@ -8,6 +8,8 @@ export const clock = new ClockSync();
 const HOST = process.env.NEXT_PUBLIC_PARTYKIT_HOST ?? 'localhost:1999';
 const tokenKey = (code: string) => `hoodwink:token:${code}`;
 
+type Role = { kind: 'player'; name: string } | { kind: 'spectator' };
+
 let socket: PartySocket | null = null;
 let pingTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -29,17 +31,22 @@ function schedulePing(n = 0) {
   pingTimer = setTimeout(() => schedulePing(n + 1), n < 5 ? 500 : 10_000);
 }
 
-export function connect(code: string, name: string) {
+function open(code: string, role: Role) {
   disconnect();
-  useGame.setState({ status: 'connecting', error: null, view: null, seq: 0 });
+  useGame.setState({ status: 'connecting', error: null, view: null, publicView: null, seq: 0 });
   const ws = new PartySocket({ host: HOST, room: code });
   socket = ws;
   let hasOpened = false;
 
   ws.addEventListener('open', () => {
-    // First open and every auto-reconnect: re-join with our secret token to reclaim our seat.
-    const token = safeStorage(() => localStorage.getItem(tokenKey(code))) ?? undefined;
-    send({ type: 'join', name, token });
+    // First open and every auto-reconnect: re-announce ourselves.
+    if (role.kind === 'player') {
+      // Players re-join with their secret token to reclaim their seat.
+      const token = safeStorage(() => localStorage.getItem(tokenKey(code))) ?? undefined;
+      send({ type: 'join', name: role.name, token });
+    } else {
+      send({ type: 'watch' });
+    }
     useGame.setState({ status: 'open' });
     if (pingTimer) clearTimeout(pingTimer);
     schedulePing();
@@ -61,6 +68,9 @@ export function connect(code: string, name: string) {
         // Drop out-of-order frames.
         if (msg.seq >= useGame.getState().seq) useGame.setState({ view: msg.view, seq: msg.seq, error: null });
         break;
+      case 'public':
+        if (msg.seq >= useGame.getState().seq) useGame.setState({ publicView: msg.view, seq: msg.seq, error: null });
+        break;
       case 'pong':
         clock.addSample(msg.t0, msg.serverNow);
         break;
@@ -69,6 +79,16 @@ export function connect(code: string, name: string) {
         break;
     }
   });
+}
+
+/** Connect as a player. */
+export function connect(code: string, name: string) {
+  open(code, { kind: 'player', name });
+}
+
+/** Connect as a read-only spectator (the big-screen host display). */
+export function watch(code: string) {
+  open(code, { kind: 'spectator' });
 }
 
 export function disconnect() {

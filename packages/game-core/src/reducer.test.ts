@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRoom, reduce, viewFor, type Deps, type GameEvent, type Question, type Room } from './index';
+import { createRoom, publicViewFor, reduce, viewFor, type Deps, type GameEvent, type Question, type Room } from './index';
 
 const QUESTIONS: Question[] = [{ id: 'q1', prompt: 'A banana is a ___.', realAnswer: 'berry' }];
 const FALLBACKS = ['Soup, probably', 'Tax fraud'];
@@ -258,5 +258,68 @@ describe('viewFor (information secrecy)', () => {
     expect(realView.reveal?.voterIds.sort()).toEqual(['alice', 'bob', 'cara']);
     const fruit = v.answers.find((a) => a.text === 'a fruit')!;
     expect(fruit.reveal?.authorIds).toEqual(['alice']);
+  });
+});
+
+describe('publicViewFor (spectator / host screen)', () => {
+  const PRIVATE_KEYS = ['myAnswer', 'myVote', '"you"', 'canStart'];
+
+  it('carries no per-player private fields in any phase', () => {
+    const lobbyRoom = lobby();
+    const real = voting().answers.find((a) => a.isReal)!.id;
+    const revealRoom = run(
+      voting(),
+      2500,
+      { type: 'VOTE', playerId: 'alice', answerId: real },
+      { type: 'VOTE', playerId: 'bob', answerId: real },
+      { type: 'VOTE', playerId: 'cara', answerId: real },
+    );
+    for (const r of [lobbyRoom, submitting(), voting(), revealRoom]) {
+      const json = JSON.stringify(publicViewFor(r));
+      for (const key of PRIVATE_KEYS) expect(json, `${r.phase} leaked ${key}`).not.toContain(key);
+    }
+  });
+
+  it('shows who has submitted but never what they wrote while SUBMITTING', () => {
+    const r = run(submitting(), 1500, { type: 'SUBMIT', playerId: 'bob', text: 'a vegetable' });
+    const view = publicViewFor(r);
+    expect(view.submitted).toEqual(['bob']);
+    expect(JSON.stringify(view)).not.toContain('a vegetable');
+    expect(view.answers).toEqual([]);
+  });
+
+  it('hides the real answer, authorship and voters during VOTING, and owns no answers', () => {
+    const view = publicViewFor(voting());
+    const json = JSON.stringify(view);
+    expect(view.realAnswer).toBeNull();
+    for (const key of ['authorIds', 'voterIds', 'isReal']) expect(json).not.toContain(key);
+    expect(view.answers).toHaveLength(4);
+    expect(view.answers.every((a) => !a.isMine && a.reveal === null)).toBe(true);
+  });
+
+  it('reveals everything at REVEAL, same as players see', () => {
+    const r0 = voting();
+    const real = r0.answers.find((a) => a.isReal)!.id;
+    const r = run(
+      r0,
+      2500,
+      { type: 'VOTE', playerId: 'alice', answerId: real },
+      { type: 'VOTE', playerId: 'bob', answerId: real },
+      { type: 'VOTE', playerId: 'cara', answerId: real },
+    );
+    const view = publicViewFor(r);
+    expect(view.realAnswer).toBe('berry');
+    expect(view.answers.find((a) => a.id === real)?.reveal?.voterIds.sort()).toEqual(['alice', 'bob', 'cara']);
+    expect(view.answers.find((a) => a.text === 'a fruit')?.reveal?.authorIds).toEqual(['alice']);
+  });
+
+  it('is exactly the public part of a player view', () => {
+    const r = voting();
+    const { you, canStart, myAnswer, myVote, ...rest } = viewFor(r, 'alice');
+    void you; void canStart; void myAnswer; void myVote;
+    const pub = publicViewFor(r);
+    // Everything except per-viewer `isMine` flags is identical.
+    const strip = (v: typeof pub) => ({ ...v, answers: v.answers.map(({ isMine, ...a }) => (void isMine, a)) });
+    expect(strip(rest)).toEqual(strip(pub));
   });
 });

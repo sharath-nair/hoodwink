@@ -1,10 +1,12 @@
 import { z } from 'zod';
 import type { RejectCode } from './types';
-import type { RoomView } from './view';
+import type { PublicRoomView, RoomView } from './view';
 
 /** Client -> server. Validated with Zod on the server; never trust the wire. */
 export const ClientMessage = z.discriminatedUnion('type', [
   z.object({ type: z.literal('join'), name: z.string().min(1).max(40), token: z.string().max(100).optional() }),
+  /** Subscribe as a read-only spectator (the big-screen host display). Not a player. */
+  z.object({ type: z.literal('watch') }),
   z.object({ type: z.literal('start') }),
   z.object({ type: z.literal('submit'), text: z.string().max(200) }),
   z.object({ type: z.literal('vote'), answerId: z.string().max(40) }),
@@ -18,5 +20,6 @@ export type ClientMessage = z.infer<typeof ClientMessage>;
 export type ServerMessage =
   | { type: 'welcome'; playerId: string; token: string }
   | { type: 'state'; seq: number; view: RoomView }
+  | { type: 'public'; seq: number; view: PublicRoomView }
   | { type: 'pong'; t0: number; serverNow: number }
   | { type: 'error'; code: RejectCode | 'BAD_MESSAGE' | 'NOT_JOINED'; message: string };

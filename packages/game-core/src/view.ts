@@ -17,14 +17,13 @@ export interface AnswerView {
   reveal: null | { isReal: boolean; authorIds: string[]; voterIds: string[] };
 }
 
-export interface RoomView {
+/** What every spectator (the big-screen host display) may see: the room as seen by "nobody in particular". */
+export interface PublicRoomView {
   code: string;
   phase: Phase;
   round: number;
   totalRounds: number;
-  you: string;
   hostId: string | null;
-  canStart: boolean;
   players: PlayerView[];
   prompt: string | null;
   /** Absolute SERVER epoch ms. Clients must correct for clock offset (see ClockSync). */
@@ -32,11 +31,17 @@ export interface RoomView {
   phaseDurationMs: number | null;
   submitted: string[];
   voted: string[];
-  myAnswer: string | null;
-  myVote: string | null;
   answers: AnswerView[];
   realAnswer: string | null;
   roundDeltas: Record<string, number>;
+}
+
+/** A player's view: the public view plus their own private state. */
+export interface RoomView extends PublicRoomView {
+  you: string;
+  canStart: boolean;
+  myAnswer: string | null;
+  myVote: string | null;
 }
 
 export function phaseDuration(phase: Phase, c: Config): number | null {
@@ -55,12 +60,11 @@ export function phaseDuration(phase: Phase, c: Config): number | null {
 }
 
 /**
- * Sanitized projection of the room for ONE player.
+ * Shared projection. `viewerId` is null for spectators, who own no answers.
  * - `realAnswer` is withheld until REVEAL.
  * - Answer authors and voters are withheld until REVEAL.
- * - During SUBMITTING a player only sees their own text.
  */
-export function viewFor(room: Room, playerId: string): RoomView {
+function project(room: Room, viewerId: string | null): PublicRoomView {
   const revealed = room.phase === 'REVEAL' || room.phase === 'SCOREBOARD' || room.phase === 'GAME_OVER';
   const inRound = room.phase !== 'LOBBY';
   const showAnswers = room.phase === 'VOTING' || revealed;
@@ -69,7 +73,7 @@ export function viewFor(room: Room, playerId: string): RoomView {
     ? room.answers.map((a) => ({
         id: a.id,
         text: a.text,
-        isMine: a.authorIds.includes(playerId),
+        isMine: viewerId !== null && a.authorIds.includes(viewerId),
         reveal: revealed
           ? {
               isReal: a.isReal,
@@ -87,11 +91,7 @@ export function viewFor(room: Room, playerId: string): RoomView {
     phase: room.phase,
     round: room.round,
     totalRounds: room.config.totalRounds,
-    you: playerId,
     hostId: room.hostId,
-    canStart:
-      room.phase === 'LOBBY' &&
-      room.playerOrder.filter((id) => room.players[id]?.isConnected).length >= room.config.minPlayers,
     players: room.playerOrder.map((id) => {
       const p = room.players[id]!;
       return { id, name: p.name, score: p.score, isConnected: p.isConnected, isHost: id === room.hostId };
@@ -99,12 +99,29 @@ export function viewFor(room: Room, playerId: string): RoomView {
     prompt: inRound ? (room.question?.prompt ?? null) : null,
     phaseEndsAt: room.phaseEndsAt,
     phaseDurationMs: phaseDuration(room.phase, room.config),
+    // Who has finished is public. WHAT they wrote or chose is not.
     submitted: Object.keys(room.submissions),
     voted: Object.keys(room.votes),
-    myAnswer: room.submissions[playerId] ?? null,
-    myVote: room.votes[playerId] ?? null,
     answers,
     realAnswer: revealed ? (room.question?.realAnswer ?? null) : null,
     roundDeltas: revealed ? { ...room.roundDeltas } : {},
   };
+}
+
+/** Sanitized projection of the room for ONE player. During SUBMITTING they see only their own text. */
+export function viewFor(room: Room, playerId: string): RoomView {
+  return {
+    ...project(room, playerId),
+    you: playerId,
+    canStart:
+      room.phase === 'LOBBY' &&
+      room.playerOrder.filter((id) => room.players[id]?.isConnected).length >= room.config.minPlayers,
+    myAnswer: room.submissions[playerId] ?? null,
+    myVote: room.votes[playerId] ?? null,
+  };
+}
+
+/** Projection for the big-screen host display. Contains no player's private state. */
+export function publicViewFor(room: Room): PublicRoomView {
+  return project(room, null);
 }

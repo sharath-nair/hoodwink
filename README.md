@@ -45,6 +45,14 @@ npm run typecheck
 
 Open http://localhost:3000 in three tabs (or phones on your LAN, set `NEXT_PUBLIC_PARTYKIT_HOST`), create a room, join with the code and play.
 
+## Big-screen host display
+
+Open `/host` on a TV or laptop: it creates a room and shows a big room code, a QR code and the live player list.
+Phones scan the QR, join, and the first player to join is the in-game host who starts the game. The TV connects as a
+read-only **spectator**: it receives `publicViewFor(room)` (no per-player private state, no secrets before REVEAL) and
+the server rejects any game action from a spectator socket. On a LAN demo set `NEXT_PUBLIC_JOIN_ORIGIN` to your
+LAN address so the QR works on phones.
+
 ## E2E tests
 
 `npm run test:e2e` boots PartyKit (with `E2E=1` for short phase timers) and a production Next build on dedicated
@@ -54,12 +62,13 @@ ports (4999/4000), then drives 3-4 isolated browser contexts through real games.
 - **game**: full 2-round game back to lobby, host-only controls, late joiner and duplicate-name refusal, merged identical lies
 - **reconnect**: a player drops mid-round, the game doesn't wait, and they reclaim their seat on return
 - **secrecy**: inspects every WebSocket frame: no real answer, authorship or other players' lies before the right phase
+- **host**: the TV follows a full game; its feed has no private state or pre-reveal secrets; spectator sockets can't act
 - **clock**: clients with +7s and -9s clocks show the same countdown (verified to fail if offset correction is removed)
 
 ## Roadmap
 
 - [x] Sound effects: synthesized WebAudio (`apps/web/src/lib/sfx.ts`), unlocked on first tap, muted in hidden tabs, persisted mute toggle
-- [ ] Jackbox-style `/host` big-screen view, with phones as controllers
+- [x] Jackbox-style `/host` big-screen view (read-only spectator role; phones are the controllers)
 - [x] Playwright multi-context E2E (`e2e/`): full game, reconnect, secrecy on the wire, clock skew
 - [ ] Larger / themed question packs, optional LLM-generated prompts with curated fallback
 - [ ] Deploy: `partykit deploy` + Vercel

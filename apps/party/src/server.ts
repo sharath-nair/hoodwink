@@ -4,6 +4,7 @@ import {
   FALLBACK_ANSWERS,
   QUESTION_BANK,
   createRoom,
+  publicViewFor,
   reduce,
   viewFor,
   type Deps,
@@ -21,6 +22,8 @@ interface Persisted {
 
 interface ConnState {
   playerId: string | null;
+  /** Read-only big-screen display. Receives the public view; can never act on the game. */
+  spectator?: boolean;
 }
 
 /**
@@ -65,7 +68,15 @@ export default class HoodwinkServer implements Party.Server {
       return this.send(sender, { type: 'pong', t0: msg.t0, serverNow: Date.now() });
     }
 
+    if (msg.type === 'watch') {
+      // A player connection can't be silently downgraded or mixed: spectators are a separate role.
+      if (sender.state?.playerId) return this.sendError(sender, 'BAD_MESSAGE', 'Already joined as a player');
+      sender.setState({ playerId: null, spectator: true });
+      return this.send(sender, { type: 'public', seq: this.seq, view: publicViewFor(this.game) });
+    }
+
     if (msg.type === 'join') {
+      if (sender.state?.spectator) return this.sendError(sender, 'BAD_MESSAGE', 'Spectators cannot join');
       const knownId = msg.token ? this.tokens[msg.token] : undefined;
       const playerId = knownId ?? crypto.randomUUID();
       const token = knownId ? msg.token! : crypto.randomUUID();
@@ -139,9 +150,11 @@ export default class HoodwinkServer implements Party.Server {
 
   private broadcast() {
     this.seq++;
+    const publicView = publicViewFor(this.game); // computed once, shared by all spectators
     for (const conn of this.party.getConnections<ConnState>()) {
       const playerId = conn.state?.playerId;
       if (playerId) this.send(conn, { type: 'state', seq: this.seq, view: viewFor(this.game, playerId) });
+      else if (conn.state?.spectator) this.send(conn, { type: 'public', seq: this.seq, view: publicView });
     }
   }
 

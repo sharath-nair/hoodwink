@@ -1,10 +1,9 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useState } from 'react';
-
-const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // no I/O: easy to read aloud
-const newCode = () => Array.from({ length: 4 }, () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)]).join('');
+import { newRoomCode as newCode } from '@/lib/room-code';
 
 export default function Home() {
   const router = useRouter();
@@ -83,6 +82,13 @@ export default function Home() {
           </button>
         </form>
       </div>
+
+      <p className="text-center text-sm text-white/70">
+        Playing on a TV or laptop?{' '}
+        <Link href="/host" className="font-bold text-pink-300 underline underline-offset-4">
+          Host on a big screen
+        </Link>
+      </p>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { RoomView } from '@hoodwink/game-core';
+import type { PublicRoomView, RoomView } from '@hoodwink/game-core';
 
 export type ConnStatus = 'idle' | 'connecting' | 'open' | 'reconnecting';
 
@@ -7,6 +7,8 @@ interface GameStore {
   status: ConnStatus;
   /** Latest sanitized view from the server. The client never holds secrets or derives game state. */
   view: RoomView | null;
+  /** Spectator (big-screen) view; only set when connected via `watch`. */
+  publicView: PublicRoomView | null;
   seq: number;
   error: string | null;
 }
@@ -15,6 +17,7 @@ interface GameStore {
 export const useGame = create<GameStore>(() => ({
   status: 'idle',
   view: null,
+  publicView: null,
   seq: 0,
   error: null,
 }));
